@@ -171,3 +171,51 @@ test('types: required keys must be mapped, optional ones may be left out, unknow
   // @ts-expect-error values are strings or sources, never numbers
   await resolver.resolve(schema, { REQUIRED: 3000 }).catch(() => undefined);
 });
+
+test('types and values: union schemas, from Zod or any other Standard Schema validator', async () => {
+  const resolver = createResolver();
+  const isProduction = process.env.STAGE === 'production';
+
+  const zodSchema = z.discriminatedUnion('APP_ENV', [
+    z.object({ APP_ENV: z.literal('dev') }),
+    z.object({ APP_ENV: z.literal('prod'), ANALYTICS_TOKEN: z.string() }),
+  ]);
+  // A key only the prod member has can be mapped, conditionally or not
+  await resolver.resolve(zodSchema, {
+    APP_ENV: isProduction ? 'prod' : 'dev',
+    ...(isProduction && { ANALYTICS_TOKEN: 'token' }),
+  });
+  assert.deepEqual(
+    await resolver.resolve(zodSchema, { APP_ENV: 'prod', ANALYTICS_TOKEN: 'token' }),
+    { APP_ENV: 'prod', ANALYTICS_TOKEN: 'token' },
+  );
+  const error = await resolveError(resolver.resolve(zodSchema, { APP_ENV: 'prod' }));
+  assert.match(error.problems[0], /^ANALYTICS_TOKEN: /);
+  // @ts-expect-error UNKNOWN is in no member
+  await resolver.resolve(zodSchema, { APP_ENV: 'dev', UNKNOWN: 'value' });
+
+  // The same through the bare Standard Schema interface, without Zod
+  type HandWrittenInput = { MODE: 'local' } | { MODE: 'remote'; URL: string };
+  const handWritten: StandardSchemaV1<HandWrittenInput> = {
+    '~standard': {
+      version: 1,
+      vendor: 'test',
+      validate: (value) => {
+        const input = value as Partial<{ MODE: string; URL: string }>;
+        if (input.MODE === 'local') return { value: { MODE: 'local' } };
+        if (input.MODE === 'remote' && input.URL)
+          return { value: { MODE: 'remote', URL: input.URL } };
+        return { issues: [{ message: 'invalid', path: ['MODE'] }] };
+      },
+    },
+  };
+  assert.deepEqual(
+    await resolver.resolve(handWritten, { MODE: 'remote', URL: 'https://example.com' }),
+    {
+      MODE: 'remote',
+      URL: 'https://example.com',
+    },
+  );
+  // @ts-expect-error MODE is required in every member
+  await resolver.resolve(handWritten, { URL: 'https://example.com' }).catch(() => undefined);
+});
