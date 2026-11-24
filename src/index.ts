@@ -32,15 +32,19 @@ type Simplify<T> = { [K in keyof T]: T[K] } & {};
 type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T];
 type OptionalKeys<T> = Exclude<keyof T, RequiredKeys<T>>;
 
-/** Every required key of the schema's input must be mapped; optional ones may be left out. */
-export type Mapping<Input> = Simplify<
-  { [K in RequiredKeys<Input>]: Source } & { [K in OptionalKeys<Input>]?: Source }
->;
+/**
+ * Every required key of the schema's input must be mapped; optional ones may be left out. For a
+ * schema whose input is a union (e.g. a discriminated union), the mapping may match any member,
+ * so keys that only some members have can be mapped; the schema checks the actual combination.
+ */
+export type Mapping<Input> = Input extends unknown
+  ? Simplify<{ [K in RequiredKeys<Input>]: Source } & { [K in OptionalKeys<Input>]?: Source }>
+  : never;
 
 /** The resolved variables, as strings, exactly as they should be set in an environment. */
-export type ResolvedEnv<Input> = Simplify<
-  { [K in RequiredKeys<Input>]: string } & { [K in OptionalKeys<Input>]?: string }
->;
+export type ResolvedEnv<Input> = Input extends unknown
+  ? Simplify<{ [K in RequiredKeys<Input>]: string } & { [K in OptionalKeys<Input>]?: string }>
+  : never;
 
 /**
  * Reads the whole value of a Parameter Store parameter, or, given `field`, one top-level field of a

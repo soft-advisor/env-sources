@@ -63,7 +63,7 @@ const serverVars = await resolver.resolve(serverEnv, {
 
 ### Types
 
-The mapping is typed from the schema: every required variable must be mapped, optional ones may be left out, and unknown names are rejected.
+The mapping is typed from the schema: every required variable must be mapped, optional ones may be left out, and unknown names are rejected. For a schema whose input is a union, such as a discriminated union with different variables per environment, the mapping may match any member: keys only some members have can be mapped, and the schema checks the actual combination. This works with any validator whose Standard Schema types describe the union, not only Zod.
 
 ### Validation and errors
 
