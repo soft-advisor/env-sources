@@ -116,8 +116,6 @@ pnpm build
 
 The package publishes itself when its `package.json` version isn't on npm yet: bump the version in a PR, and merging it to `main` publishes ([`publish.yml`](.github/workflows/publish.yml)). It's published from GitHub Actions with npm provenance, so each version links to the commit and workflow that built it.
 
-**Publishing credentials.** npm trusted publishing (GitHub OIDC, no token) can only be set up for a package that already exists. So:
+**Publishing credentials.** The package publishes with npm trusted publishing: GitHub Actions signs in with OIDC, and no npm token is stored. Its trusted publisher on npmjs.com is GitHub Actions, organization `soft-advisor`, repository `env-sources`, workflow `publish.yml`. Renaming the workflow or the repo breaks publishing until that setting is updated.
 
-1. The first version is published with the organization's npm token (the `XYZ` organization secret).
-2. Then, on npmjs.com, the package's Settings → Trusted publisher is set to GitHub Actions, organization `soft-advisor`, repository `env-sources`, workflow `publish.yml`.
-3. The `NODE_AUTH_TOKEN` env is removed from `publish.yml`. Later versions publish through OIDC.
+Trusted publishing can only be set up for a package that already exists, so 0.1.0 was published with the organization's npm token.
